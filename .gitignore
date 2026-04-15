@@ -1,0 +1,13 @@
+# Binaries
+benford-analyzer
+*.exe
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# Local beads
+.beads/
