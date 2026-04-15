@@ -16,5 +16,10 @@ benford-analyzer
 __pycache__/
 *.pyc
 
+# Environment
+.env
+.env.local
+.env.example
+
 # Agent context
 CLAUDE.md
