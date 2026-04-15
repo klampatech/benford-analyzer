@@ -8,7 +8,7 @@ COPY --from=python:3.13-slim /usr/local/bin/pip /usr/local/bin/pip
 RUN pip install --no-cache-dir uv
 
 # Copy requirements first for better caching
-COPY package.json ./
+COPY package.json .env.example ./
 
 # Install dependencies
 RUN uv pip install --system --no-cache -r package.json
@@ -32,9 +32,14 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy application code
 COPY --from=builder /app/src ./src
 
+# Copy environment template
+COPY --from=builder /app/.env.example .env.example
+
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV APP_NAME=BenfordFingerprint
+ENV APP_VERSION=1.0.0
 
 # Switch to non-root user
 USER appuser

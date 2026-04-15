@@ -16,6 +16,7 @@ CLAUDE.md
 .beads
 .runtime
 .env
+.env.local
 .venv
 venv/
 *.log
