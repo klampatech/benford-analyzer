@@ -35,13 +35,13 @@ class TestAnalyzeEndpoint:
     
     def test_analyze_with_article_text(self):
         """Test analysis with article content."""
-        text = """
-        The company reported revenue of 125000 dollars in Q1.
-        Q2 saw an increase to 187000 dollars.
-        Q3 and Q4 brought 234000 and 456000 respectively.
-        Total for the year exceeded 1 million dollars.
-        Marketing spend was 45000, 67000, 89000, and 123000 across quarters.
-        """
+        # Generate text with at least 30 numbers for meaningful analysis
+        numbers = [125000, 187000, 234000, 456000, 45000, 67000, 89000, 123000,
+                   234000, 567000, 890000, 1230000, 2345000, 3456000, 4567000,
+                   5678000, 6789000, 7890000, 8901000, 9012000, 1013000, 1124000,
+                   1235000, 2346000, 3457000, 4568000, 5679000, 6780000, 7891000,
+                   8902000, 9013000, 123400, 234500, 345600, 456700, 567800]
+        text = "The company reported: " + ", ".join(str(n) for n in numbers)
         response = client.post("/api/v1/analyze", json={
             "content": text,
             "source": "article",

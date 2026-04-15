@@ -63,15 +63,15 @@ class TestAnalyzeText:
     """Tests for full text analysis."""
     
     def test_analyze_with_sufficient_numbers(self):
-        text = """
-        The first quarter showed 123456 in revenue.
-        Second quarter brought 234567 in sales.
-        Third quarter achieved 345678 in total.
-        Fourth quarter exceeded 456789 in profit.
-        """
+        # Generate text with at least 30 numbers
+        numbers = [123456, 234567, 345678, 456789, 123000, 234000, 345000, 456000,
+                   567000, 678000, 789000, 890000, 901000, 123400, 234500, 345600,
+                   456700, 567800, 678900, 789000, 890100, 901200, 123500, 234600,
+                   345700, 456800, 567900, 678000, 789100, 890200]
+        text = "Numbers: " + ", ".join(str(n) for n in numbers)
         result = analyze_text(text, digits=[1])
         assert "numbers_found" in result
-        assert result["numbers_found"] >= 4
+        assert result["numbers_found"] >= 30
         assert 1 in result["results"]
     
     def test_analyze_insufficient_data(self):

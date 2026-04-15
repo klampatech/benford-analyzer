@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benford's Law Analyzer</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Benford's Law Analyzer</h1>
+            <p class="subtitle">Analyze numerical data for compliance with Benford's Law</p>
+        </header>
+
+        <main>
+            <form id="analyzeForm" method="post" action="/analyze">
+                <div class="input-section">
+                    <div class="input-type-toggle">
+                        <label class="radio-label">
+                            <input type="radio" name="input_type" value="text" checked>
+                            <span>Text Input</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="input_type" value="url">
+                            <span>URL Fetch</span>
+                        </label>
+                    </div>
+
+                    <div id="textInputSection" class="input-area">
+                        <label for="content">Enter text to analyze:</label>
+                        <textarea 
+                            id="content" 
+                            name="content" 
+                            placeholder="Paste your text content here. The analyzer will extract numbers and check if their leading digits follow Benford's Law distribution..."
+                            rows="10"
+                        ></textarea>
+                        <p class="help-text">Enter at least 30 numbers for meaningful analysis.</p>
+                    </div>
+
+                    <div id="urlInputSection" class="input-area hidden">
+                        <label for="url">Enter URL to fetch and analyze:</label>
+                        <input 
+                            type="url" 
+                            id="url" 
+                            name="url" 
+                            placeholder="https://example.com/article"
+                        >
+                        <p class="help-text">The page content will be fetched and analyzed for Benford compliance.</p>
+                    </div>
+                </div>
+
+                <div class="options-section">
+                    <fieldset>
+                        <legend>Digit Positions to Analyze:</legend>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="digits" value="1" checked>
+                            <span>First Digit</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="digits" value="2">
+                            <span>Second Digit</span>
+                        </label>
+                    </fieldset>
+                </div>
+
+                <div class="submit-section">
+                    <button type="submit" id="analyzeBtn">Analyze Data</button>
+                </div>
+            </form>
+
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Fetching and analyzing content...</p>
+            </div>
+
+            <div id="error" class="error hidden"></div>
+
+            <div id="results" class="results hidden">
+                <h2>Analysis Results</h2>
+                
+                <div class="summary">
+                    <div class="stat">
+                        <span class="stat-label">Numbers Found:</span>
+                        <span class="stat-value" id="numbersFound">-</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Content Preview:</span>
+                        <span class="stat-value" id="contentPreview">-</span>
+                    </div>
+                </div>
+
+                <div id="analysisDetails"></div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Powered by <a href="https://en.wikipedia.org/wiki/Benford%27s_law" target="_blank">Benford's Law</a></p>
+        </footer>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
