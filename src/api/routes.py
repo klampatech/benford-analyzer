@@ -1,13 +1,18 @@
 """FastAPI routes for Benford analysis."""
+import os
 from typing import Literal, List, Optional
 from urllib.parse import urlparse
 
 import httpx
 from bs4 import BeautifulSoup
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, HTTPRequest
 from pydantic import BaseModel, Field
 
 from src.core import analyze_text
+
+# External services configuration from environment
+EXTERNAL_URL_TIMEOUT = int(os.getenv("EXTERNAL_URL_TIMEOUT", "10"))
+MAX_URL_SIZE = int(os.getenv("MAX_URL_SIZE", "5242880"))  # 5MB
 
 router = APIRouter(prefix="/api/v1", tags=["analyze"])
 
@@ -35,7 +40,7 @@ async def fetch_url_content(url: str) -> str:
         if not parsed.scheme:
             url = f"https://{url}"
         
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=float(EXTERNAL_URL_TIMEOUT), follow_redirects=True) as client:
             response = await client.get(url)
             response.raise_for_status()
         
@@ -46,7 +51,7 @@ async def fetch_url_content(url: str) -> str:
             tag.decompose()
         
         text = soup.get_text(separator=" ", strip=True)
-        return text[:50000]  # Limit to 50k chars
+        return text[:MAX_URL_SIZE]  # Limit to configured max size
     
     except httpx.HTTPError as e:
         raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {str(e)}")
