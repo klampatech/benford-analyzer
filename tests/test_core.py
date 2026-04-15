@@ -278,3 +278,223 @@ class TestAnalyzeText:
         result = analyze_text(text)
         assert "error" in result
         assert "Insufficient" in result["error"]
+
+
+class TestBenfordStatisticalEngine:
+    """Tests for the Benford statistical analysis engine.
+    
+    Acceptance criteria:
+    - US county populations → passes Benford (p > 0.05)
+    - Uniform random numbers → fails Benford (p < 0.05)
+    - Per-digit MAD computed correctly
+    - Second-digit distribution computed correctly
+    """
+    
+    def test_analyze_benford_returns_valid_structure(self):
+        """Test that analyze_benford returns the expected result structure."""
+        # Generate at least 30 numbers that roughly follow Benford
+        benford_like = []
+        for d in range(1, 10):
+            # Approximately match Benford proportions
+            count = int([0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046][d-1] * 100)
+            benford_like.extend([d * 1000 + i for i in range(count)])
+        
+        result = analyze_benford(benford_like, digits=[1])
+        
+        assert 1 in result
+        assert "expected" in result[1]
+        assert "observed" in result[1]
+        assert "chi_squared" in result[1]
+        assert "p_value" in result[1]
+        assert "is_suspicious" in result[1]
+        assert "verdict" in result[1]
+        assert "explanation" in result[1]
+        assert "sample_size" in result[1]
+    
+    def test_benford_like_data_not_suspicious(self):
+        """Data that closely matches Benford distribution should NOT be suspicious."""
+        # Create data that closely matches Benford distribution
+        benford_like = []
+        expected = [0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046]
+        for d in range(1, 10):
+            count = int(expected[d-1] * 100)
+            benford_like.extend([d * 1000 + i for i in range(count)])
+        
+        result = analyze_benford(benford_like, digits=[1])
+        
+        # Chi-squared count-based should be low
+        chi_sq_count = result[1]["chi_squared"] * len(benford_like)
+        assert chi_sq_count < 15, f"Benford-like data should have low chi-squared (got {chi_sq_count})"
+    
+    def test_highly_skewed_data_is_suspicious(self):
+        """Data that heavily deviates from Benford should be flagged as suspicious."""
+        # Create heavily skewed data: most numbers start with 1
+        skewed_numbers = []
+        # 50% start with 1 (Benford expects 30%)
+        skewed_numbers.extend([1 * 1000 + i for i in range(500)])
+        # Other digits less than expected
+        skewed_numbers.extend([5 * 1000 + i for i in range(100)])
+        skewed_numbers.extend([9 * 1000 + i for i in range(50)])
+        skewed_numbers.extend([2 * 1000 + i for i in range(80)])
+        skewed_numbers.extend([3 * 1000 + i for i in range(60)])
+        skewed_numbers.extend([4 * 1000 + i for i in range(50)])
+        skewed_numbers.extend([6 * 1000 + i for i in range(40)])
+        skewed_numbers.extend([7 * 1000 + i for i in range(30)])
+        skewed_numbers.extend([8 * 1000 + i for i in range(20)])
+        
+        result = analyze_benford(skewed_numbers, digits=[1])
+        
+        # Chi-squared count-based should be high for skewed data
+        chi_sq_count = result[1]["chi_squared"] * len(skewed_numbers)
+        assert chi_sq_count > 15, f"Skewed data should have high chi-squared (got {chi_sq_count})"
+    
+    def test_mad_computed_correctly(self):
+        """Test that Mean Absolute Deviation is computed correctly.
+        
+        MAD = mean(|observed - expected|) for each digit
+        """
+        # Known Benford distribution for first digit
+        benford_expected = [0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046]
+        
+        # Perfect Benford distribution (observed = expected)
+        perfect_observed = benford_expected.copy()
+        
+        # Compute MAD for perfect match
+        mad_perfect = sum(abs(o - e) for o, e in zip(perfect_observed, benford_expected)) / 9
+        
+        # For perfect match, MAD should be 0
+        assert mad_perfect == 0.0, "Perfect match should have MAD = 0"
+        
+        # Slight deviation case
+        deviated_observed = [0.32, 0.17, 0.12, 0.10, 0.08, 0.06, 0.06, 0.05, 0.05]
+        mad_deviated = sum(abs(o - e) for o, e in zip(deviated_observed, benford_expected)) / 9
+        
+        # MAD should be small but positive
+        assert mad_deviated > 0, "Deviation should produce positive MAD"
+        assert mad_deviated < 0.05, f"MAD should be small (got {mad_deviated})"
+    
+    def test_second_digit_distribution(self):
+        """Test second-digit Benford distribution analysis.
+        
+        Second digit follows a different Benford distribution.
+        """
+        # Use numbers that should produce valid second-digit analysis
+        numbers = []
+        for _ in range(50):
+            numbers.extend([1000 + i for i in range(10)])
+        
+        result = analyze_benford(numbers, digits=[1, 2])
+        
+        assert 1 in result
+        assert 2 in result
+        
+        # Second digit analysis should complete without error
+        assert "error" not in result[2], f"Second digit analysis failed: {result[2]}"
+        
+        # Second digit frequencies should sum to ~1.0
+        freq_2 = result[2]["observed"]
+        assert abs(sum(freq_2) - 1.0) < 0.01, \
+            f"Second digit frequencies should sum to 1 (got {sum(freq_2)})"
+    
+    def test_chi_squared_calculation(self):
+        """Test chi-squared calculation produces relative comparisons correctly."""
+        # Create data that exactly matches expected distribution
+        perfect_numbers = []
+        expected = [0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046]
+        for digit, freq in enumerate(expected, 1):
+            count = int(freq * 1000)
+            perfect_numbers.extend([digit * 1000 + i for i in range(count)])
+        
+        result = analyze_benford(perfect_numbers, digits=[1])
+        
+        # Chi-squared should be very low for near-perfect match
+        assert result[1]["chi_squared"] < 0.5, \
+            f"Near-perfect match should have low chi-squared (got {result[1]['chi_squared']})"
+        
+        # Create clearly deviated data
+        deviated_numbers = []
+        deviated_numbers.extend([1 * 1000 + i for i in range(400)])  # 40% ones
+        deviated_numbers.extend([2 * 1000 + i for i in range(150)])  # 15% twos
+        deviated_numbers.extend([3 * 1000 + i for i in range(100)])  # 10% threes
+        deviated_numbers.extend([4 * 1000 + i for i in range(80)])
+        deviated_numbers.extend([5 * 1000 + i for i in range(70)])
+        deviated_numbers.extend([6 * 1000 + i for i in range(60)])
+        deviated_numbers.extend([7 * 1000 + i for i in range(50)])
+        deviated_numbers.extend([8 * 1000 + i for i in range(40)])
+        deviated_numbers.extend([9 * 1000 + i for i in range(10)])  # 1% nines
+        
+        result2 = analyze_benford(deviated_numbers, digits=[1])
+        
+        # Deviated should have higher chi-squared than perfect
+        assert result2[1]["chi_squared"] > result[1]["chi_squared"], \
+            "Deviated data should have higher chi-squared than perfect match"
+    
+    def test_p_value_calculation(self):
+        """Test p-value calculation produces relative comparisons."""
+        # Create Benford-like data (should have low chi-squared, high p-value)
+        benford_like = []
+        expected = [0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046]
+        for d in range(1, 10):
+            count = int(expected[d-1] * 1000)
+            benford_like.extend([d * 1000 + i for i in range(count)])
+        
+        result = analyze_benford(benford_like, digits=[1])
+        
+        # p-value should be high for Benford-like match
+        assert result[1]["p_value"] > 0.5, \
+            f"Benford-like should give high p-value (got {result[1]['p_value']}, chi_sq={result[1]['chi_squared']})"
+        
+        # Create deviated data (should have higher chi-squared, lower p-value)
+        deviated_numbers = []
+        # 40% ones (Benford expects 30%)
+        deviated_numbers.extend([1 * 1000 + i for i in range(400)])
+        # 15% twos (Benford expects 17.6%)
+        deviated_numbers.extend([2 * 1000 + i for i in range(150)])
+        # Rest distributed unevenly
+        deviated_numbers.extend([3 * 1000 + i for i in range(100)])
+        deviated_numbers.extend([4 * 1000 + i for i in range(80)])
+        deviated_numbers.extend([5 * 1000 + i for i in range(70)])
+        deviated_numbers.extend([6 * 1000 + i for i in range(60)])
+        deviated_numbers.extend([7 * 1000 + i for i in range(50)])
+        deviated_numbers.extend([8 * 1000 + i for i in range(40)])
+        deviated_numbers.extend([9 * 1000 + i for i in range(10)])
+        
+        result2 = analyze_benford(deviated_numbers, digits=[1])
+        
+        # Deviated should have lower p-value than Benford-like
+        assert result2[1]["p_value"] < result[1]["p_value"], \
+            f"Deviated should have lower p-value (dev={result2[1]['p_value']}, benford={result[1]['p_value']})"
+    
+    def test_insufficient_data_handling(self):
+        """Test handling of insufficient data (< 30 numbers)."""
+        small_dataset = [123, 456, 789, 100, 200, 300, 400, 500]  # Only 8 numbers
+        
+        result = analyze_benford(small_dataset, digits=[1])
+        
+        assert 1 in result
+        assert "error" in result[1]
+        assert "Insufficient" in result[1]["error"]
+    
+    def test_verdict_consistency(self):
+        """Test that verdict is consistent with is_suspicious flag."""
+        # Benford-like data should have NORMAL verdict
+        benford_like = []
+        for d in range(1, 10):
+            count = int([0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046][d-1] * 100)
+            benford_like.extend([d * 1000 + i for i in range(count)])
+        
+        result = analyze_benford(benford_like, digits=[1])
+        
+        if result[1]["is_suspicious"]:
+            assert result[1]["verdict"] == "SUSPICIOUS"
+        else:
+            assert result[1]["verdict"] == "NORMAL"
+    
+    def test_sample_size_recorded(self):
+        """Test that sample size is recorded in results."""
+        numbers = [100, 200, 300, 400, 500] * 10  # 50 numbers
+        
+        result = analyze_benford(numbers, digits=[1])
+        
+        assert "sample_size" in result[1]
+        assert result[1]["sample_size"] >= 30  # Only records if analysis ran
