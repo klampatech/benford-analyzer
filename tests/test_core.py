@@ -4,6 +4,7 @@ import pytest
 from src.core import (
     extract_numbers,
     get_leading_digits,
+    extract_leading_digits_from_text,
     expected_benford_frequencies,
     analyze_text,
     analyze_benford
@@ -243,6 +244,94 @@ class TestLeadingDigits:
         
         leading2 = get_leading_digits(numbers, 5)
         assert leading2 == [5]  # 5th digit is 5
+
+
+class TestExtractLeadingDigitsFromText:
+    """Comprehensive tests for extracting leading digits directly from text."""
+    
+    def test_extracts_first_digit_from_simple_text(self):
+        """Test extraction of first digits from text with integers."""
+        text = "Company made 5000 profit, then 12000 more"
+        leading = extract_leading_digits_from_text(text, 1)
+        assert 5 in leading  # 5000 starts with 5
+        assert 1 in leading  # 12000 starts with 1
+    
+    def test_extracts_second_digit_from_text(self):
+        """Test extraction of second digits from text."""
+        text = "Sales of 123 units and 456 items"
+        leading = extract_leading_digits_from_text(text, 2)
+        assert 2 in leading  # 123 -> 2
+        assert 5 in leading  # 456 -> 5
+    
+    def test_empty_string(self):
+        """Test extraction from empty string returns empty list."""
+        text = ""
+        leading = extract_leading_digits_from_text(text)
+        assert leading == []
+    
+    def test_text_with_no_numbers(self):
+        """Test extraction from text without numbers."""
+        text = "Hello world, this is a test"
+        leading = extract_leading_digits_from_text(text)
+        assert leading == []
+    
+    def test_single_digit_numbers(self):
+        """Test extraction from text with single digit numbers."""
+        text = "The values are 1, 2, 3, 4, 5"
+        leading = extract_leading_digits_from_text(text)
+        assert 1 in leading
+        assert 2 in leading
+        assert 3 in leading
+        assert 4 in leading
+        assert 5 in leading
+    
+    def test_negative_numbers_handled(self):
+        """Test that negative numbers use absolute value."""
+        text = "Temperature is -5 degrees, then -20"
+        leading = extract_leading_digits_from_text(text)
+        assert 5 in leading  # |-5| starts with 5
+        assert 2 in leading  # |-20| starts with 2
+    
+    def test_zero_excluded(self):
+        """Test that zero is excluded from results."""
+        text = "Count is 0 and zero items"
+        leading = extract_leading_digits_from_text(text)
+        assert 0 not in leading
+    
+    def test_leading_zeros_excluded(self):
+        """Test that numbers with leading zeros are excluded."""
+        text = "Values 007 and 008 and 009"
+        leading = extract_leading_digits_from_text(text)
+        # Numbers starting with '0' (except '0' itself) are excluded
+        assert 0 not in leading
+        assert 7 not in leading
+        assert 8 not in leading
+        assert 9 not in leading
+    
+    def test_large_numbers(self):
+        """Test extraction from text with large numbers."""
+        text = "Revenue was 1234567890 dollars"
+        leading = extract_leading_digits_from_text(text)
+        assert 1 in leading  # 1234567890 starts with 1
+    
+    def test_mixed_content_text(self):
+        """Test extraction from complex mixed content."""
+        text = "On Jan 15, 2024, we sold 500 units for $2500."
+        leading = extract_leading_digits_from_text(text)
+        # 15 -> 1, 2024 -> 2, 500 -> 5, 2500 -> 2
+        assert 1 in leading
+        assert 2 in leading
+        assert 5 in leading
+    
+    def test_combined_with_extract_numbers(self):
+        """Test that result matches using separate functions."""
+        text = "Numbers: 123, 456, 789, 100"
+        # Using combined function
+        leading_combined = extract_leading_digits_from_text(text, 1)
+        # Using separate functions
+        numbers = extract_numbers(text)
+        leading_separate = get_leading_digits(numbers, 1)
+        assert leading_combined == leading_separate
 
 
 class TestExpectedFrequencies:

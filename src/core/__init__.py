@@ -37,6 +37,23 @@ def get_leading_digits(numbers: List[int], position: int = 1) -> List[int]:
     return result
 
 
+def extract_leading_digits_from_text(text: str, position: int = 1) -> List[int]:
+    """Extract leading digits directly from raw text.
+    
+    This is a convenience function that combines extract_numbers and
+    get_leading_digits into a single operation for efficiency.
+    
+    Args:
+        text: Raw text containing numbers
+        position: Which digit position to extract (1 = first digit, 2 = second, etc.)
+    
+    Returns:
+        List of leading digits found in the text
+    """
+    numbers = extract_numbers(text)
+    return get_leading_digits(numbers, position)
+
+
 def expected_benford_frequencies(digit: int = 1) -> List[float]:
     """Get expected Benford frequencies for leading digits.
     
