@@ -11,3 +11,10 @@ benford-analyzer
 
 # Local beads
 .beads/
+
+# Python
+__pycache__/
+*.pyc
+
+# Agent context
+CLAUDE.md
