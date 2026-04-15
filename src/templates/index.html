@@ -91,6 +91,28 @@
                 </div>
 
                 <div id="analysisDetails"></div>
+
+                <details class="explainer">
+                    <summary>What is Benford's Law?</summary>
+                    <div class="explainer-content">
+                        <p><strong>Benford's Law</strong> predicts that in many naturally occurring sets of numbers, the first digit is more likely to be small (like 1) than large (like 9).</p>
+                        <p>In a dataset that follows Benford's Law:</p>
+                        <ul>
+                            <li>About <strong>30%</strong> of numbers start with 1</li>
+                            <li>About <strong>18%</strong> start with 2</li>
+                            <li>About <strong>12%</strong> start with 3</li>
+                            <li>And so on...</li>
+                        </ul>
+                        <p>This distribution appears in many real-world data sets like street addresses, stock prices, and population figures.</p>
+                        <p><strong>Why does it matter?</strong> If you have a list of numbers and the distribution doesn't match this pattern, it could indicate:</p>
+                        <ul>
+                            <li>Data has been fabricated or manipulated</li>
+                            <li>Numbers are from a limited range (like 1-100)</li>
+                            <li>Human-made patterns rather than organic data</li>
+                        </ul>
+                        <p>The <em>Chi-squared test</em> compares the expected distribution against what we observe, giving us a p-value that tells us how confident we can be in the result.</p>
+                    </div>
+                </details>
             </div>
         </main>
 
@@ -100,5 +122,6 @@
     </div>
 
     <script src="/static/script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </body>
 </html>

@@ -1,4 +1,6 @@
-// Benford's Law Analyzer - Client-side JavaScript
+// Benford's Law Analyzer - Client-side JavaScript with Chart.js
+
+let benfordChart = null; // Store chart instance for cleanup
 
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('analyzeForm');
@@ -101,6 +103,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const detailsDiv = document.getElementById('analysisDetails');
         detailsDiv.innerHTML = '';
 
+        // Calculate aggregate authenticity score and collect flags
+        let totalChiSq = 0;
+        let analysisCount = 0;
+        let isSuspiciousOverall = false;
+        let allFlags = [];
+
         for (const [digitPos, result] of Object.entries(data.results)) {
             if (result.error) {
                 detailsDiv.innerHTML += `
@@ -112,8 +120,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 continue;
             }
 
+            totalChiSq += result.chi_squared;
+            analysisCount++;
+            if (result.is_suspicious) {
+                isSuspiciousOverall = true;
+            }
+
+            // Identify flags for this digit position
+            const digitFlags = findFlags(digitPos, result);
+            allFlags = allFlags.concat(digitFlags);
+
+            // Calculate authenticity score for this digit position
+            const digitAuthScore = calculateAuthScore(result);
+            result.digitAuthScore = digitAuthScore;
+
             const verdictClass = result.is_suspicious ? 'suspicious' : 'normal';
             const tableRows = generateFrequencyTable(digitPos, result);
+            const chartId = `chart-${digitPos}`;
             
             detailsDiv.innerHTML += `
                 <div class="analysis-block">
@@ -137,6 +160,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </div>
                     
+                    <div class="chart-container">
+                        <canvas id="${chartId}"></canvas>
+                    </div>
+                    
                     ${tableRows}
                     
                     <div class="explanation">
@@ -144,9 +171,158 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
             `;
+
+            // Render the chart after adding the canvas
+            renderChart(chartId, digitPos, result);
+        }
+
+        // Add verdict panel
+        const avgChiSq = analysisCount > 0 ? totalChiSq / analysisCount : 0;
+        const overallAuthScore = calculateOverallAuthScore(avgChiSq, isSuspiciousOverall);
+        const verdictText = isSuspiciousOverall ? 'Distribution appears unusual' : 'Distribution appears normal';
+        const verdictSubtitle = isSuspiciousOverall 
+            ? 'This data may have been manipulated or is not naturally occurring'
+            : 'This data follows the expected Benford distribution';
+
+        detailsDiv.innerHTML = `
+            <div class="verdict-panel">
+                <div class="auth-score ${isSuspiciousOverall ? 'suspicious' : 'normal'}">${overallAuthScore}%</div>
+                <div class="verdict-text">${verdictText}</div>
+                <div class="verdict-subtitle">${verdictSubtitle}</div>
+            </div>
+        ` + detailsDiv.innerHTML;
+
+        // Add flag list if there are any flags
+        if (allFlags.length > 0) {
+            const flagsHtml = allFlags.map(flag => `
+                <div class="flag-item">
+                    <header onclick="this.parentElement.classList.toggle('expanded')">
+                        <span class="flag-title">${flag.title}</span>
+                        <span class="flag-toggle">▼</span>
+                    </header>
+                    <div class="flag-detail">${flag.detail}</div>
+                </div>
+            `).join('');
+            
+            detailsDiv.innerHTML += `
+                <div class="flag-list">
+                    <h3>Detailed Anomalies</h3>
+                    ${flagsHtml}
+                </div>
+            `;
         }
 
         resultsDiv.classList.remove('hidden');
+    }
+
+    function renderChart(canvasId, digitPos, result) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        const digitLabels = digitPos === '1' 
+            ? ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+            : ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+        const ctx = canvas.getContext('2d');
+        
+        // Destroy existing chart if any
+        if (benfordChart) {
+            benfordChart.destroy();
+        }
+
+        benfordChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: digitLabels,
+                datasets: [
+                    {
+                        label: 'Expected',
+                        data: result.expected.map(e => (e * 100).toFixed(1)),
+                        backgroundColor: 'rgba(37, 99, 235, 0.7)',
+                        borderColor: 'rgba(37, 99, 235, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Observed',
+                        data: result.observed.map(o => (o * 100).toFixed(1)),
+                        backgroundColor: 'rgba(249, 115, 22, 0.7)',
+                        borderColor: 'rgba(249, 115, 22, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: `Digit Position ${digitPos} Distribution`
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Frequency (%)'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function calculateAuthScore(result) {
+        // Map chi-squared to authenticity score (0-100)
+        // Lower chi-squared = higher authenticity
+        // chi-squared of 0 = 100% authentic, chi-squared of 20+ = lower authenticity
+        const score = Math.max(0, Math.min(100, 100 - (result.chi_squared * 2)));
+        return Math.round(score);
+    }
+
+    function calculateOverallAuthScore(avgChiSq, isSuspicious) {
+        // Average chi-squared across all digit positions
+        let score = Math.max(0, Math.min(100, 100 - (avgChiSq * 2)));
+        
+        // If any suspicious, reduce score
+        if (isSuspicious) {
+            score = Math.min(score, 70);
+        }
+        
+        return Math.round(score);
+    }
+
+    function findFlags(digitPos, result) {
+        const flags = [];
+        const digitLabels = digitPos === '1' 
+            ? [1, 2, 3, 4, 5, 6, 7, 8, 9]
+            : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+        result.expected.forEach((exp, i) => {
+            const obs = result.observed[i];
+            const diff = (obs - exp) * 100;
+            const absDiff = Math.abs(diff);
+
+            // Flag if difference is more than 3%
+            if (absDiff > 3) {
+                const digit = digitLabels[i];
+                const direction = diff > 0 ? 'more' : 'less';
+                const pct = Math.abs(diff).toFixed(1);
+                
+                flags.push({
+                    title: `Digit ${digit} appears ${pct}% ${direction} than expected`,
+                    detail: `Expected: ${(exp * 100).toFixed(1)}%, Observed: ${(obs * 100).toFixed(1)}%. ` +
+                            `This digit appears ${digitLabels[i]}% of the time when it should appear ${(exp * 100).toFixed(1)}% of the time.`
+                });
+            }
+        });
+
+        return flags;
     }
 
     function generateFrequencyTable(digitPos, result) {
