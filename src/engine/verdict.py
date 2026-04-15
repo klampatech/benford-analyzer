@@ -153,8 +153,7 @@ def generate_verdict(
         
         exp_pct = expected[i] * 100
         act_pct = observed[i] * 100
-        deviation = act_pct - exp_pct
-        
+
         # Flag if actual is more than 2x expected OR significantly above uniform
         threshold = exp_pct * 2
         if act_pct > threshold:
