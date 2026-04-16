@@ -1,9 +1,11 @@
 """Main FastAPI application."""
 import os
-from typing import List
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from src.api.routes import router as analyze_router
 
@@ -56,6 +58,20 @@ app.add_middleware(
 
 # Include routers
 app.include_router(analyze_router)
+
+# Mount static files
+static_path = Path(__file__).parent.parent / "static"
+if static_path.exists():
+    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index():
+    """Serve the main web interface."""
+    template_path = Path(__file__).parent.parent / "templates" / "index.html"
+    if template_path.exists():
+        return template_path.read_text()
+    return "<h1>Benford Analyzer</h1><p>Templates not found. API is running at /docs</p>"
 
 
 @app.get("/health")

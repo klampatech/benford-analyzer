@@ -1,3 +1,37 @@
+Metadata-Version: 2.4
+Name: benford-analyzer
+Version: 1.0.0
+Summary: Benford's Law analysis API for detecting anomalies in numerical datasets
+Author-email: klampatech <info@klampatech.com>
+License: MIT
+Project-URL: Homepage, https://github.com/klampatech/benford-analyzer
+Project-URL: Documentation, https://github.com/klampatech/benford-analyzer#readme
+Project-URL: Repository, https://github.com/klampatech/benford-analyzer
+Project-URL: Issues, https://github.com/klampatech/benford-analyzer/issues
+Keywords: benford,law,analysis,fraud,detection,statistics
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering :: Mathematics
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.109.0
+Requires-Dist: uvicorn>=0.27.0
+Requires-Dist: pydantic>=2.5.0
+Requires-Dist: httpx>=0.26.0
+Requires-Dist: beautifulsoup4>=4.12.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+
 # Benford Analyzer
 
 **A statistical analysis tool that detects anomalies in numerical datasets by testing compliance with Benford's Law.**
