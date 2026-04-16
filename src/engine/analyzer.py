@@ -228,7 +228,8 @@ def chi_squared_critical_value(df: int, alpha: float = 0.05) -> float:
 def compute_p_value(chi_squared: float, df: int) -> float:
     """Compute p-value from chi-squared statistic.
     
-    Uses approximation for p-value calculation.
+    Uses scipy.stats.chi2 for accurate p-value calculation.
+    Falls back to approximation if scipy is unavailable.
     
     Args:
         chi_squared: Chi-squared statistic
@@ -237,17 +238,30 @@ def compute_p_value(chi_squared: float, df: int) -> float:
     Returns:
         P-value (probability of observing this or more extreme result)
     """
-    # Simple approximation based on ratio to critical value
-    critical = chi_squared_critical_value(df, 0.05)
-    
-    if chi_squared <= critical:
-        # High p-value (not suspicious)
-        ratio = critical / max(chi_squared, 0.1)
-        return min(0.95, 0.5 + 0.45 * (1 - 1/ratio))
-    else:
-        # Low p-value (suspicious)
-        excess = chi_squared - critical
-        return max(0.01, 0.05 * math.exp(-excess / critical))
+    try:
+        from scipy import stats
+        # p-value = P(X > chi_squared) = 1 - CDF(chi_squared)
+        return float(1 - stats.chi2.cdf(chi_squared, df))
+    except ImportError:
+        # Fallback approximation for when scipy is unavailable
+        # Uses Wilson-Hilferty transformation: z = (x/df)^(1/3)
+        import math
+        
+        if chi_squared <= 0 or df <= 0:
+            return 1.0
+        
+        # Wilson-Hilferty approximation
+        z = ((chi_squared / df) ** (1.0/3.0) - (1 - 2/(9*df))) / math.sqrt(2/(9*df))
+        
+        # Standard normal CDF approximation (Abramowitz & Stegun)
+        # CDF for z using Hastings approximation
+        t = 1 / (1 + 0.2316419 * abs(z))
+        poly = t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))))
+        cdf = 1 - (1 / math.sqrt(2 * math.pi)) * math.exp(-z*z/2) * poly
+        
+        # One-tailed p-value
+        p = 1 - cdf if z > 0 else cdf
+        return max(0.0, min(1.0, p))
 
 
 def analyze_single_position(numbers: List[int], position: int = 1) -> BenfordAnalysisResult:

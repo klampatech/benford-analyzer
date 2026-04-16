@@ -101,50 +101,58 @@ def analyze_benford(numbers: List[int], digits: List[int] = [1, 2]) -> dict:
         
         observed = [count / n for count in observed_counts]
         
-        # Chi-squared calculation (proportion-based, scaled by sample size)
-        # For count-based chi-squared: sum((O-E)^2 / E)
-        # This equals n * sum((obs - exp)^2 / exp) where n is sample size
-        chi_sq = sum(
-            (obs - exp) ** 2 / exp
-            for obs, exp in zip(observed, expected)
-            if exp > 0
-        )
-        
-        # Scale by sample size to get count-based chi-squared
-        n = len(leading)
-        chi_sq_count_based = chi_sq * n
+        # Chi-squared calculation using counts
+        # sum((O-E)²/E) where O and E are COUNTS, not proportions
+        chi_sq = 0.0
+        for exp_prob, obs_count in zip(expected, observed_counts):
+            exp_count = exp_prob * n
+            if exp_count > 0:
+                chi_sq += (obs_count - exp_count) ** 2 / exp_count
         
         # Degrees of freedom for chi-squared test
         df = len(expected) - 1
         
-        # Threshold for count-based chi-squared: critical value for df=8, alpha=0.05
-        # is 15.51. We use 15.0 as a slightly more lenient threshold.
+        # Critical values from chi-squared distribution (alpha=0.05)
         if digit_pos == 1:
-            critical_value = 15.0
+            critical_value = 15.51  # df=8
         else:
-            critical_value = 16.0  # df=9 -> critical value 16.92 for alpha=0.05
+            critical_value = 16.92  # df=9
         
-        is_suspicious = chi_sq_count_based > critical_value
+        is_suspicious = chi_sq > critical_value
         
-        # P-value approximation: p_value = max(0.01, 1 - chi_sq_count_based / (critical_value * 2))
-        p_value = max(0.01, 1 - chi_sq_count_based / (critical_value * 2))
+        # P-value calculation using scipy or approximation
+        try:
+            from scipy import stats
+            p_value = float(1 - stats.chi2.cdf(chi_sq, df))
+        except ImportError:
+            # Fallback: Wilson-Hilferty transformation
+            import math
+            if chi_sq <= 0 or df <= 0:
+                p_value = 1.0
+            else:
+                z = ((chi_sq / df) ** (1.0/3.0) - (1 - 2/(9*df))) / math.sqrt(2/(9*df))
+                t = 1 / (1 + 0.2316419 * abs(z))
+                poly = t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))))
+                cdf = 1 - (1 / math.sqrt(2 * math.pi)) * math.exp(-z*z/2) * poly
+                p_value = max(0.0, min(1.0, 1 - cdf if z > 0 else cdf))
         
         verdict = "SUSPICIOUS" if is_suspicious else "NORMAL"
         explanation = (
             f"Analysis of {n} numbers shows "
             f"{verdict.lower()} distribution at digit position {digit_pos}. "
-            f"Chi-squared: {chi_sq:.3f}, p-value: {p_value:.3f}"
+            f"Chi-squared: {chi_sq:.3f}, p-value: {p_value:.3e}"
         )
         
         results[digit_pos] = {
             "expected": expected,
             "observed": observed,
             "chi_squared": round(chi_sq, 4),
-            "p_value": round(p_value, 4),
+            "p_value": round(p_value, 6),
             "is_suspicious": is_suspicious,
             "verdict": verdict,
             "explanation": explanation,
-            "sample_size": n
+            "sample_size": n,
+            "observed_counts": observed_counts
         }
     
     return results

@@ -406,14 +406,16 @@ class TestBenfordStatisticalEngine:
         benford_like = []
         expected = [0.301, 0.176, 0.125, 0.097, 0.079, 0.067, 0.058, 0.051, 0.046]
         for d in range(1, 10):
-            count = int(expected[d-1] * 100)
-            benford_like.extend([d * 1000 + i for i in range(count)])
+            count = int(expected[d-1] * 1000)  # Use 1000 for more accurate distribution
+            benford_like.extend([d * 10000 + i for i in range(count)])
         
         result = analyze_benford(benford_like, digits=[1])
         
-        # Chi-squared count-based should be low
-        chi_sq_count = result[1]["chi_squared"] * len(benford_like)
-        assert chi_sq_count < 15, f"Benford-like data should have low chi-squared (got {chi_sq_count})"
+        # Chi-squared count-based should be low (already count-based in result)
+        chi_sq = result[1]["chi_squared"]
+        # Critical value for df=8 at alpha=0.05 is 15.51
+        assert chi_sq < 15.51, f"Benford-like data should have low chi-squared (got {chi_sq})"
+        assert result[1]["verdict"] != "SUSPICIOUS", "Benford-like data should not be flagged suspicious"
     
     def test_highly_skewed_data_is_suspicious(self):
         """Data that heavily deviates from Benford should be flagged as suspicious."""
